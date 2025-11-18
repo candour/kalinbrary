@@ -122,27 +122,31 @@ class MainActivity : AppCompatActivity() {
             val stories = StoryRepository.getStories()
             val imageFiles = mutableSetOf<File>()
             val storiesForExport = stories.map { story ->
-                val newContent = story.content.map { element ->
+                val newContent = story.content.mapNotNull { element ->
                     if (element is ImageElement && element.imageUrl.startsWith("/")) {
                         val file = File(element.imageUrl)
                         if (file.exists()) {
                             imageFiles.add(file)
                             ImageElement(file.name)
                         } else {
-                            element
+                            null // Remove image element if local file is missing
                         }
                     } else {
-                        element
+                        element // Keep text elements and http images
                     }
                 }
-                var finalCoverUrl = story.coverImageUrl
+
+                var finalCoverUrl: String? = story.coverImageUrl
                 if (story.coverImageUrl?.startsWith("/") == true) {
                     val coverImageFile = File(story.coverImageUrl)
                     if (coverImageFile.exists()) {
                         imageFiles.add(coverImageFile)
                         finalCoverUrl = coverImageFile.name
+                    } else {
+                        finalCoverUrl = null // Remove broken reference
                     }
                 }
+
                 Story(story.title, finalCoverUrl, newContent)
             }
 
@@ -200,16 +204,31 @@ class MainActivity : AppCompatActivity() {
                 val type = object : com.google.gson.reflect.TypeToken<List<Story>>() {}.type
                 val importedStories: List<Story> = storageManager.gson.fromJson(storiesJson, type)
                 val finalStories = importedStories.map { story ->
-                    val newContent = story.content.map { element ->
-                        if (element is ImageElement) {
+                    val newContent = story.content.mapNotNull { element ->
+                        if (element is ImageElement && !element.imageUrl.startsWith("http")) {
                             val localFile = File(filesDir, element.imageUrl)
-                            ImageElement(localFile.absolutePath)
+                            if (localFile.exists()) {
+                                ImageElement(localFile.absolutePath)
+                            } else {
+                                null
+                            }
                         } else {
                             element
                         }
                     }
-                    val localCoverImage = if (story.coverImageUrl != null) File(filesDir, story.coverImageUrl) else null
-                    Story(story.title, localCoverImage?.absolutePath, newContent)
+                    val newCoverUrl = story.coverImageUrl?.let { url ->
+                        if (!url.startsWith("http")) {
+                            val localFile = File(filesDir, url)
+                            if (localFile.exists()) {
+                                localFile.absolutePath
+                            } else {
+                                null
+                            }
+                        } else {
+                            url
+                        }
+                    }
+                    Story(story.title, newCoverUrl, newContent)
                 }
                 withContext(Dispatchers.Main) {
                     StoryRepository.clearAndAddStories(finalStories)

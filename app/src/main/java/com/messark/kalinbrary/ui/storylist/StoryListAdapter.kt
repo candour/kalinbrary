@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.messark.kalinbrary.R
 import com.messark.kalinbrary.data.Story
 import com.squareup.picasso.Picasso
+import java.io.File
 
 class StoryListAdapter(
     private val stories: List<Story>,
@@ -44,7 +45,11 @@ class StoryListAdapter(
             currentStory = story
             titleTextView.text = story.title
             if (!story.coverImageUrl.isNullOrEmpty()) {
-                Picasso.get().load(story.coverImageUrl).into(coverImageView)
+                if (story.coverImageUrl.startsWith("/")) {
+                    Picasso.get().load(File(story.coverImageUrl)).into(coverImageView)
+                } else {
+                    Picasso.get().load(story.coverImageUrl).into(coverImageView)
+                }
             }
         }
     }
