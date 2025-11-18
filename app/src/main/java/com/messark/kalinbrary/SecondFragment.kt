@@ -4,12 +4,14 @@ import android.app.AlertDialog
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.messark.kalinbrary.R
 import com.messark.kalinbrary.data.StoryRepository
 import com.messark.kalinbrary.databinding.FragmentSecondBinding
@@ -32,7 +34,7 @@ class SecondFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-
+        setHasOptionsMenu(true)
         _binding = FragmentSecondBinding.inflate(inflater, container, false)
         return binding.root
 
@@ -47,10 +49,21 @@ class SecondFragment : Fragment() {
             val storyContentAdapter = StoryContentAdapter(it.content)
             val recyclerView: RecyclerView = view.findViewById(R.id.story_content_list)
             recyclerView.adapter = storyContentAdapter
+        }
+    }
 
-            view.findViewById<FloatingActionButton>(R.id.fab_delete_story).setOnClickListener {
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.menu_second, menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_delete_story -> {
                 showDeleteConfirmationDialog()
+                true
             }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 
