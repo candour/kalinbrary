@@ -1,6 +1,7 @@
 package com.messark.kalinbrary.ui.addstory
 
 import android.content.Context
+import android.net.Uri
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -8,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.messark.kalinbrary.R
@@ -24,12 +26,23 @@ class AddStoryFragment : Fragment() {
     private lateinit var titleEditText: EditText
     private lateinit var coverImageUrlEditText: EditText
     private lateinit var contentEditText: EditText
+    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            lifecycleScope.launch {
+                val localPath = saveImageFromUri(it)
+                if (localPath != null) {
+                    val currentText = contentEditText.text.toString()
+                    val newText = "$currentText\n[IMAGE:$localPath]\n"
+                    contentEditText.setText(newText)
+                }
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_add_story, container, false)
 
         titleEditText = view.findViewById(R.id.edit_text_title)
@@ -38,8 +51,12 @@ class AddStoryFragment : Fragment() {
 
         view.findViewById<Button>(R.id.button_add_image).setOnClickListener {
             val currentText = contentEditText.text.toString()
-            val newText = currentText + "\n[IMAGE:PASTE_IMAGE_URL_HERE]\n"
+            val newText = "$currentText\n[IMAGE:PASTE_IMAGE_URL_HERE]\n"
             contentEditText.setText(newText)
+        }
+
+        view.findViewById<Button>(R.id.button_add_photo_from_phone).setOnClickListener {
+            pickImage.launch("image/*")
         }
 
         view.findViewById<Button>(R.id.button_save_story).setOnClickListener {
@@ -70,7 +87,11 @@ class AddStoryFragment : Fragment() {
             if (part.startsWith("[IMAGE:") && part.endsWith("]")) {
                 val imageUrl = part.substring(7, part.length - 1)
                 if (imageUrl.isNotBlank()) {
-                    val localPath = saveImageLocally(imageUrl)
+                    val localPath = if (imageUrl.startsWith("http")) {
+                        saveImageLocally(imageUrl)
+                    } else {
+                        imageUrl
+                    }
                     if (localPath != null) {
                         storyElements.add(ImageElement(localPath))
                     }
@@ -89,20 +110,31 @@ class AddStoryFragment : Fragment() {
     private suspend fun saveImageLocally(imageUrl: String): String? {
         return withContext(Dispatchers.IO) {
             try {
-                val url = URL(imageUrl)
-                val connection = url.openConnection()
-                connection.connect()
-                val inputStream = connection.getInputStream()
-
                 val fileName = "${System.currentTimeMillis()}.jpg"
                 val file = File(requireContext().filesDir, fileName)
-                val outputStream = FileOutputStream(file)
+                URL(imageUrl).openStream().use { inputStream ->
+                    FileOutputStream(file).use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                file.absolutePath
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
 
-                inputStream.copyTo(outputStream)
-
-                outputStream.close()
-                inputStream.close()
-
+    private suspend fun saveImageFromUri(uri: Uri): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val fileName = "${System.currentTimeMillis()}.jpg"
+                val file = File(requireContext().filesDir, fileName)
+                requireContext().contentResolver.openInputStream(uri)?.use { inputStream ->
+                    FileOutputStream(file).use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
                 file.absolutePath
             } catch (e: Exception) {
                 e.printStackTrace()

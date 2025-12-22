@@ -29,12 +29,26 @@
             android:layout_marginTop="16dp"
             android:hint="Start writing your story..." />
 
-        <Button
-            android:id="@+id/button_add_image"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Add Image" />
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/button_add_image"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Add Image from URL" />
+
+            <Button
+                android:id="@+id/button_add_photo_from_phone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="16dp"
+                android:text="Add Photo from Phone" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/button_save_story"
