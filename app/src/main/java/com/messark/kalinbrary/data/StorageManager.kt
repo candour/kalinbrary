@@ -26,7 +26,16 @@ class StorageManager(private val context: Context) {
         return if (json != null) {
             val type = object : TypeToken<MutableList<Story>>() {}.type
             try {
-                gson.fromJson(json, type) ?: mutableListOf()
+                val stories: MutableList<Story> = gson.fromJson(json, type) ?: mutableListOf()
+                // Migration: Ensure all stories have an ID
+                stories.map { story ->
+                    @Suppress("SENSELESS_COMPARISON")
+                    if (story.id == null) {
+                        story.copy(id = java.util.UUID.randomUUID().toString())
+                    } else {
+                        story
+                    }
+                }.toMutableList()
             } catch (e: JsonParseException) {
                 e.printStackTrace()
                 // Clear corrupted data

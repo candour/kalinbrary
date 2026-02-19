@@ -38,7 +38,7 @@ class FirstFragment : Fragment() {
 
         val stories = StoryRepository.getStories()
         val storyListAdapter = StoryListAdapter(stories) {
-            val action = FirstFragmentDirections.actionFirstFragmentToSecondFragment(it.title)
+            val action = FirstFragmentDirections.actionFirstFragmentToSecondFragment(it.id)
             findNavController().navigate(action)
         }
 

@@ -9,6 +9,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.RecyclerView
@@ -43,9 +44,10 @@ class SecondFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val story = StoryRepository.getStories().find { it.title == args.storyTitle }
+        val story = StoryRepository.getStories().find { it.id == args.storyId }
 
         story?.let {
+            (activity as? AppCompatActivity)?.supportActionBar?.title = it.title
             val storyContentAdapter = StoryContentAdapter(it.content)
             val recyclerView: RecyclerView = view.findViewById(R.id.story_content_list)
             recyclerView.adapter = storyContentAdapter
@@ -59,6 +61,11 @@ class SecondFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_edit_story -> {
+                val action = SecondFragmentDirections.actionSecondFragmentToAddStoryFragment(args.storyId)
+                findNavController().navigate(action)
+                true
+            }
             R.id.action_delete_story -> {
                 showDeleteConfirmationDialog()
                 true
@@ -80,7 +87,7 @@ class SecondFragment : Fragment() {
     }
 
     private fun deleteStory() {
-        val story = StoryRepository.getStories().find { it.title == args.storyTitle }
+        val story = StoryRepository.getStories().find { it.id == args.storyId }
         story?.let {
             StoryRepository.deleteStory(it)
         }
