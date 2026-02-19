@@ -10,10 +10,13 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
 import com.messark.kalinbrary.R
 import com.messark.kalinbrary.data.*
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -23,6 +26,7 @@ import java.net.URL
 
 class AddStoryFragment : Fragment() {
 
+    private val args: AddStoryFragmentArgs by navArgs()
     private lateinit var titleEditText: EditText
     private lateinit var coverImageUrlEditText: EditText
     private lateinit var contentEditText: EditText
@@ -49,6 +53,22 @@ class AddStoryFragment : Fragment() {
         coverImageUrlEditText = view.findViewById(R.id.edit_text_cover_image_url)
         contentEditText = view.findViewById(R.id.edit_text_content)
 
+        args.storyId?.let { id ->
+            (activity as? AppCompatActivity)?.supportActionBar?.title = "Edit Story"
+            val story = StoryRepository.getStories().find { it.id == id }
+            story?.let {
+                titleEditText.setText(it.title)
+                coverImageUrlEditText.setText(it.coverImageUrl)
+                val contentText = it.content.joinToString("\n") { element ->
+                    when (element) {
+                        is TextElement -> element.text
+                        is ImageElement -> "[IMAGE:${element.imageUrl}]"
+                    }
+                }
+                contentEditText.setText(contentText)
+            }
+        }
+
         view.findViewById<Button>(R.id.button_add_image).setOnClickListener {
             val currentText = contentEditText.text.toString()
             val newText = "$currentText\n[IMAGE:PASTE_IMAGE_URL_HERE]\n"
@@ -74,8 +94,16 @@ class AddStoryFragment : Fragment() {
         val coverImageUrl = coverImageUrlEditText.text.toString()
         val content = contentEditText.text.toString()
 
+        val existingStory = args.storyId?.let { id ->
+            StoryRepository.getStories().find { it.id == id }
+        }
+
         val localCoverImagePath = if (coverImageUrl.isNotBlank()) {
-            saveImageLocally(coverImageUrl)
+            if (coverImageUrl.startsWith("http")) {
+                saveImageLocally(coverImageUrl)
+            } else {
+                coverImageUrl
+            }
         } else {
             null
         }
@@ -102,8 +130,13 @@ class AddStoryFragment : Fragment() {
         }
 
         if (title.isNotBlank() && (storyElements.isNotEmpty() || localCoverImagePath != null)) {
-            val newStory = Story(title, localCoverImagePath, storyElements)
-            StoryRepository.addStory(newStory)
+            if (existingStory != null) {
+                val updatedStory = Story(existingStory.id, title, localCoverImagePath, storyElements)
+                StoryRepository.updateStory(updatedStory)
+            } else {
+                val newStory = Story(UUID.randomUUID().toString(), title, localCoverImagePath, storyElements)
+                StoryRepository.addStory(newStory)
+            }
         }
     }
 

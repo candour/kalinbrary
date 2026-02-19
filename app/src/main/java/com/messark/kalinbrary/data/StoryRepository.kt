@@ -1,6 +1,7 @@
 package com.messark.kalinbrary.data
 
 import android.content.Context
+import java.util.UUID
 
 object StoryRepository {
 
@@ -16,6 +17,7 @@ object StoryRepository {
             // Add a default story if storage is empty
             stories.add(
                 Story(
+                    id = UUID.randomUUID().toString(),
                     title = "The Little Match Girl",
                     coverImageUrl = "https://images.unsplash.com/photo-1519996529648-284bc6738369?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bWF0Y2hlc3xlbnwwfHwwfHx8MA%3D%3D",
                     content = listOf(
@@ -38,8 +40,16 @@ object StoryRepository {
         storageManager.saveStories(stories)
     }
 
+    fun updateStory(updatedStory: Story) {
+        val index = stories.indexOfFirst { it.id == updatedStory.id }
+        if (index != -1) {
+            stories[index] = updatedStory
+            storageManager.saveStories(stories)
+        }
+    }
+
     fun deleteStory(story: Story) {
-        stories.remove(story)
+        stories.removeAll { it.id == story.id }
         storageManager.saveStories(stories)
     }
 

@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.*
+import java.util.UUID
 import java.nio.charset.Charset
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -147,7 +148,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                Story(story.title, finalCoverUrl, newContent)
+                Story(story.id, story.title, finalCoverUrl, newContent)
             }
 
             contentResolver.openOutputStream(uri)?.use { outputStream ->
@@ -228,7 +229,9 @@ class MainActivity : AppCompatActivity() {
                             url
                         }
                     }
-                    Story(story.title, newCoverUrl, newContent)
+                    @Suppress("SENSELESS_COMPARISON")
+                    val id = if (story.id == null) UUID.randomUUID().toString() else story.id
+                    Story(id, story.title, newCoverUrl, newContent)
                 }
                 withContext(Dispatchers.Main) {
                     StoryRepository.clearAndAddStories(finalStories)
