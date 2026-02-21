@@ -143,9 +143,12 @@ class AddStoryFragment : Fragment() {
     private suspend fun saveImageLocally(imageUrl: String): String? {
         return withContext(Dispatchers.IO) {
             try {
-                val fileName = "${System.currentTimeMillis()}.jpg"
+                val fileName = "${UUID.randomUUID()}.jpg"
                 val file = File(requireContext().filesDir, fileName)
-                URL(imageUrl).openStream().use { inputStream ->
+                val connection = URL(imageUrl).openConnection()
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+                connection.getInputStream().use { inputStream ->
                     FileOutputStream(file).use { outputStream ->
                         inputStream.copyTo(outputStream)
                     }
@@ -161,7 +164,7 @@ class AddStoryFragment : Fragment() {
     private suspend fun saveImageFromUri(uri: Uri): String? {
         return withContext(Dispatchers.IO) {
             try {
-                val fileName = "${System.currentTimeMillis()}.jpg"
+                val fileName = "${UUID.randomUUID()}.jpg"
                 val file = File(requireContext().filesDir, fileName)
                 requireContext().contentResolver.openInputStream(uri)?.use { inputStream ->
                     FileOutputStream(file).use { outputStream ->

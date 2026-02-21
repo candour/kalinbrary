@@ -1,13 +1,26 @@
 package com.messark.kalinbrary.data
 
 import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.google.gson.*
 import com.google.gson.reflect.TypeToken
 import java.lang.reflect.Type
 
 class StorageManager(private val context: Context) {
 
-    private val sharedPreferences = context.getSharedPreferences("Kalinbrary", Context.MODE_PRIVATE)
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val sharedPreferences = EncryptedSharedPreferences.create(
+        context,
+        "KalinbrarySecure",
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+
     val gson: Gson
 
     init {
@@ -17,18 +30,63 @@ class StorageManager(private val context: Context) {
     }
 
     fun saveStories(stories: List<Story>) {
-        val json = gson.toJson(stories)
-        sharedPreferences.edit().putString("stories", json).apply()
+        val editor = sharedPreferences.edit()
+
+        // Get previous IDs to know what to delete
+        val oldIdsJson = sharedPreferences.getString("story_ids", null)
+        val oldIds: List<String> = if (oldIdsJson != null) {
+            val type = object : TypeToken<List<String>>() {}.type
+            try {
+                gson.fromJson(oldIdsJson, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+
+        val currentIds = stories.map { it.id }
+
+        // Save each story as an individual entry
+        stories.forEach { story ->
+            editor.putString("story_${story.id}", gson.toJson(story))
+        }
+
+        // Delete stories no longer present
+        oldIds.forEach { id ->
+            if (id !in currentIds) {
+                editor.remove("story_$id")
+            }
+        }
+
+        // Save IDs list to maintain order
+        editor.putString("story_ids", gson.toJson(currentIds))
+
+        editor.apply()
+    }
+
+    fun saveStory(story: Story) {
+        sharedPreferences.edit().putString("story_${story.id}", gson.toJson(story)).apply()
+    }
+
+    fun deleteStory(id: String) {
+        sharedPreferences.edit().remove("story_$id").apply()
+    }
+
+    fun saveStoryIds(ids: List<String>) {
+        sharedPreferences.edit().putString("story_ids", gson.toJson(ids)).apply()
     }
 
     fun loadStories(): MutableList<Story> {
-        val json = sharedPreferences.getString("stories", null)
-        return if (json != null) {
+        // Migration from old unencrypted SharedPreferences if exists
+        val oldPrefs = context.getSharedPreferences("Kalinbrary", Context.MODE_PRIVATE)
+        val oldJson = oldPrefs.getString("stories", null)
+        if (oldJson != null) {
             val type = object : TypeToken<MutableList<Story>>() {}.type
             try {
-                val stories: MutableList<Story> = gson.fromJson(json, type) ?: mutableListOf()
+                val stories: MutableList<Story> = gson.fromJson(oldJson, type) ?: mutableListOf()
                 // Migration: Ensure all stories have an ID
-                stories.map { story ->
+                val migratedStories = stories.map { story ->
                     @Suppress("SENSELESS_COMPARISON")
                     if (story.id == null) {
                         story.copy(id = java.util.UUID.randomUUID().toString())
@@ -36,15 +94,40 @@ class StorageManager(private val context: Context) {
                         story
                     }
                 }.toMutableList()
+
+                saveStories(migratedStories)
+                oldPrefs.edit().remove("stories").apply()
+                return migratedStories
             } catch (e: JsonParseException) {
                 e.printStackTrace()
-                // Clear corrupted data
-                sharedPreferences.edit().remove("stories").apply()
-                mutableListOf()
+                oldPrefs.edit().remove("stories").apply()
             }
-        } else {
-            mutableListOf()
         }
+
+        val idsJson = sharedPreferences.getString("story_ids", null)
+        if (idsJson != null) {
+            val type = object : TypeToken<List<String>>() {}.type
+            try {
+                val ids: List<String> = gson.fromJson(idsJson, type) ?: emptyList()
+                return ids.mapNotNull { id ->
+                    val storyJson = sharedPreferences.getString("story_$id", null)
+                    if (storyJson != null) {
+                        try {
+                            gson.fromJson(storyJson, Story::class.java)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } else {
+                        null
+                    }
+                }.toMutableList()
+            } catch (e: JsonParseException) {
+                e.printStackTrace()
+                sharedPreferences.edit().remove("story_ids").apply()
+            }
+        }
+
+        return mutableListOf()
     }
 }
 

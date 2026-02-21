@@ -37,20 +37,22 @@ object StoryRepository {
 
     fun addStory(story: Story) {
         stories.add(story)
-        storageManager.saveStories(stories)
+        storageManager.saveStory(story)
+        storageManager.saveStoryIds(stories.map { it.id })
     }
 
     fun updateStory(updatedStory: Story) {
         val index = stories.indexOfFirst { it.id == updatedStory.id }
         if (index != -1) {
             stories[index] = updatedStory
-            storageManager.saveStories(stories)
+            storageManager.saveStory(updatedStory)
         }
     }
 
     fun deleteStory(story: Story) {
         stories.removeAll { it.id == story.id }
-        storageManager.saveStories(stories)
+        storageManager.deleteStory(story.id)
+        storageManager.saveStoryIds(stories.map { it.id })
     }
 
     fun clearAndAddStories(newStories: List<Story>) {

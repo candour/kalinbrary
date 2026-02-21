@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
+    implementation(libs.androidx.security.crypto)
     implementation("com.squareup.picasso:picasso:2.8")
     implementation("com.google.code.gson:gson:2.9.0")
     testImplementation(libs.junit)
