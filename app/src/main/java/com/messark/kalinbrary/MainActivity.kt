@@ -193,6 +193,10 @@ class MainActivity : AppCompatActivity() {
                             storiesJson = writer.toString()
                         } else {
                             val file = File(filesDir, fileName)
+                            val canonicalPath = file.canonicalPath
+                            if (!canonicalPath.startsWith(filesDir.canonicalPath + File.separator)) {
+                                throw SecurityException("Zip Slip attempt detected: $fileName")
+                            }
                             FileOutputStream(file).use { fos ->
                                 zis.copyTo(fos)
                             }
